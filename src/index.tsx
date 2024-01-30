@@ -1,16 +1,9 @@
-export const NamespaceSolanaTools = () => {
+const sayHello = () => {
+    console.log("Say Hello");
+}
 
-    const sayHello = () => {
-        console.log("Say Hello");
-    }
+const sayBye = () => {
+    console.log("Say Bye");
+}
 
-    const sayBye = () => {
-        console.log("Say Bye");
-    }
-
-
-    return {
-        sayHello,
-        sayBye
-    }
-}   
+module.exports = { sayHello, sayBye }
