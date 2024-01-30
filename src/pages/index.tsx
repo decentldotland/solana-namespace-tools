@@ -1,6 +1,6 @@
 import type { NextPage } from "next";
 import Head from "next/head";
-import React from "react";
+import React, { useState } from "react";
 import { Header } from "@components/layout/header";
 import { PageContainer } from "@components/layout/page-container";
 import { HomeContent } from "@components/home/home-content";
@@ -12,14 +12,16 @@ import { TxConfirmData } from "@pages/api/tx/confirm";
 import { TxCreateData } from "@pages/api/tx/create";
 import { TxSendData } from "@pages/api/tx/send";
 import { useWallet } from "@solana/wallet-adapter-react";
-import { PublicKey, Transaction } from "@solana/web3.js";
+import { PublicKey, Transaction, SystemProgram, TransactionInstruction } from "@solana/web3.js";
 import { fetcher, useDataFetch } from "@utils/use-data-fetch";
 import { toast } from "react-hot-toast";
 import { Modal } from "@components/layout/modal";
 import { Footer } from "@components/layout/footer";
+import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
+import baseX from 'base-x';
 
 const Home: NextPage = () => {
-  const { publicKey, signTransaction, connected } = useWallet();
+  const { publicKey, signTransaction, connected, signMessage } = useWallet();
 
   const { data } = useDataFetch<TwitterResponse>(
     connected && publicKey ? `/api/twitter/${publicKey}` : null
@@ -28,16 +30,38 @@ const Home: NextPage = () => {
   const twitterHandle = data && data.handle;
 
   const [txState, setTxState] = React.useState<ButtonState>("initial");
+    const [sendingTokens, setSendingTokens] = useState(false);
+  /*
+  async function sendTokens({isToken = false, address, amount}: SendTokenInterface) {
+    const connection = new Connection('https://api.mainnet-beta.solana.com');
+    const sourcePk = new PublicKey("Dfd37QPw1CckwJFwLk9sFjZchYPweBgxmfpVSY89ymQW");
+    const destinationPk = new PublicKey("HPaeP1UwhNtiDexKrjeJNWmam7QnTKQNnuvMx3Ama2f7");
+    const instruction = new TransactionInstruction({
+        keys: [
+            { pubkey: sourcePk, isSigner: true, isWritable: true },
+            { pubkey: destinationPk, isSigner: false, isWritable: true }
+        ],
+        programId: new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"), // Token program ID
+        data: Buffer.from(Uint8Array.of(3, ...Buffer.alloc(5), 6)) // 3 for Transfer instruction
+    });
+    const transaction = new Transaction().add(instruction);
+    console.log("tx: ", transaction);
+    const signature = await connection.sendTransaction(transaction, [yourWalletKeyPair]);
+  }
+  */
+
 
   const onTxClick =
     ({
       isToken = false,
       address,
       amount,
+      tokenAddress = "7EYnhQoR9YM3N7UoaKRoA44Uy8JeaZV3qyouov87awMs",
     }: {
       isToken: boolean;
       address?: string;
       amount?: string;
+      tokenAddress?: string;
     }) =>
     async () => {
       if (connected && publicKey && signTransaction && txState !== "loading") {
@@ -59,11 +83,24 @@ const Home: NextPage = () => {
                   : undefined,
                 amount: amount,
                 type: isToken ? "token" : "sol",
+                tokenAddress: tokenAddress
               }),
               headers: { "Content-type": "application/json; charset=UTF-8" },
             }
           );
-
+          console.log("payload: ", {
+            method: "POST",
+            body: JSON.stringify({
+              payerAddress: publicKey.toBase58(),
+              receiverAddress: address
+                ? new PublicKey(address).toBase58()
+                : undefined,
+              amount: amount,
+              type: isToken ? "token" : "sol",
+              tokenAddress: tokenAddress
+            }),
+            headers: { "Content-type": "application/json; charset=UTF-8" },
+          });
           const tx = Transaction.from(Buffer.from(txCreateResponse, "base64"));
 
           // Request signature from wallet
@@ -117,10 +154,23 @@ const Home: NextPage = () => {
           }
         } catch (error: any) {
           setTxState("error");
-          toast.error("Error creating transaction", { id: buttonToastId });
+          toast.error("Error creating transaction Here", { id: buttonToastId });
         }
       }
     };
+
+
+  const testSign = async() => {
+    if(connected && signMessage) {
+      const uint8Array = new Uint8Array([1, 2, 3, 4, 5]);
+      const res = await signMessage(uint8Array);
+      const sig = Buffer.from(res).toJSON().data;
+      const base58 = baseX('123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz');
+      console.log("res: ", sig);
+      const base58String = base58.encode(Uint8Array.from(sig));
+      console.log("to base 58: ", base58String);
+    }
+  }
 
   return (
     <>
@@ -135,6 +185,11 @@ const Home: NextPage = () => {
         <PageContainer>
           <Header twitterHandle={twitterHandle} />
           <HomeContent />
+          {/* Wallet Connector */}
+          <WalletMultiButton className="btn" />
+          <button className="text-white" onClick={() => testSign()}>Test Signature</button>
+          <br />
+          <button onClick={() => ""}>Test Send Token</button>
           <Footer />
         </PageContainer>
         <div className="drawer-side">

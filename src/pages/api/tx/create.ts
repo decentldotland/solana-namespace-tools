@@ -25,7 +25,7 @@ export type Input = {
   receiverAddress?: string;
   amount?: number;
   type: "sol" | "token";
-  tokenAddress?: string;
+  tokenAddress: string;
 };
 
 export default async function handler(
@@ -38,7 +38,7 @@ export default async function handler(
       receiverAddress = DEFAULT_WALLET,
       amount = 1,
       type = "sol",
-      tokenAddress = DEFAULT_TOKEN,
+      tokenAddress,
     } = req.body as Input;
 
     const connection = new Connection(NETWORK);
